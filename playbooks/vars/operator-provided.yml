@@ -1,0 +1,6 @@
+k8s_managed: true
+k8s_cr_kind: File
+k8s_cr_version: simple-plays.operator-collections-nazare-7011.zoscb.ibm.com/v1minor0patch3
+ansible_operator_meta:
+  namespace: ivan-dev
+  name: k8s-file

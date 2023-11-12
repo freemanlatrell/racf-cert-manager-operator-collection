@@ -1,0 +1,141 @@
+domain: freemanlatrell
+name: racf-cert-manager
+version: 0.1.0
+displayName: z/OS RACF Certificate Manager
+description: >-
+  # IBM z/OS RACF Certificate Manager
+
+  This operator allows for the creation and management of RACF certificates on a z/OS endpoint.
+resources:
+  - kind: RacfCACert
+    description: Create a CA certificate on the z system using RACF
+    playbook: playbooks/createCACert.yml
+    finalizer: playbooks/deleteCACert.yml
+    vars:
+      - name: cert_label
+        displayName: Certificate Label
+        description: >-
+          The name of the certificate
+        type: string
+        required: true
+      - name: expiry_date
+        displayName: Expiration date
+        description: >-
+          Certificate expiration date
+        type: string
+        default: 2025-01-01
+        required: true
+      - name: keyring
+        displayName: Keyring
+        description: >-
+          They keyring to apply the cerficate
+        type: string
+        required: true
+      - name: common_name
+        displayName: Common Name
+        description: The Fully Qualified Domain Name (FQDN)
+        type: string
+        default: 'www.ibm.com'
+        required: true
+      - name: organizational_unit
+        displayName: Organizational Unit
+        description: The organizational unit to which the certificate has been issued
+        type: string
+        default: 'Development'
+      - name: country
+        displayName: Country
+        type: string
+        default: 'US'
+  - kind: RacfSiteCert
+    description: Create a site certificate on the z system using RACF
+    playbook: playbooks/createSiteCert.yml
+    finalizer: playbooks/deleteSiteCert.yml
+    vars:
+      - name: cert_label
+        displayName: Certificate Label
+        description: >-
+          The name of the certificate
+        type: string
+        required: true
+      - name: expiry_date
+        displayName: Expiration date
+        description: >-
+          Certificate expiration date
+        type: string
+        default: 2025-01-01
+        required: true
+      - name: keyring
+        displayName: Keyring
+        description: >-
+          They keyring to apply the cerficate
+        type: string
+        required: true
+      - name: signing_cert
+        displayName: Signing Certificate
+        description: >-
+          Select this certificate if the certificate should be signed. If not specified, then a self-signed certificate will be generated
+        kindReference: RacfCACert
+        type: string
+      - name: common_name
+        displayName: Common Name
+        description: The Fully Qualified Domain Name (FQDN)
+        type: string
+        default: 'www.ibm.com'
+        required: true
+      - name: organizational_unit
+        displayName: Organizational Unit
+        description: The organizational unit to which the certificate has been issued
+        type: string
+        default: 'Development'
+      - name: country
+        displayName: Country
+        type: string
+        default: 'US'
+  - kind: RacfUserCert
+    description: Create a user certificate on the z system using RACF
+    playbook: playbooks/createUserCert.yml
+    finalizer: playbooks/deleteUserCert.yml
+    vars:
+      - name: cert_label
+        displayName: Certificate Label
+        description: >-
+          The name of the certificate
+        type: string
+        required: true
+      - name: expiry_date
+        displayName: Expiration date
+        description: >-
+          Certificate expiration date
+        type: string
+        default: 2025-01-01
+        required: true
+      - name: keyring
+        displayName: Keyring
+        description: >-
+          They keyring to apply the cerficate
+        type: string
+        required: true
+      - name: signing_cert
+        displayName: Signing Certificate
+        description: >-
+          Select this certificate if the certificate should be signed. If not specified, then a self-signed certificate will be generated
+        kindReference: RacfCACert
+        type: string
+      - name: common_name
+        displayName: Common Name
+        description: The Fully Qualified Domain Name (FQDN)
+        type: string
+        default: 'www.ibm.com'
+        required: true
+      - name: organizational_unit
+        displayName: Organizational Unit
+        description: The organizational unit to which the certificate has been issued
+        type: string
+        default: 'Development'
+      - name: country
+        displayName: Country
+        type: string
+        default: 'US'
+icon:
+  - base64data: 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
+    mediatype: image/jpeg;base64

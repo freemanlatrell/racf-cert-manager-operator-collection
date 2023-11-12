@@ -1,0 +1,7 @@
+apiVersion: {{ k8s_cr_version }}
+kind: File
+metadata:
+  name: {{ item.path | basename }}
+  namespace: {{ k8s_namespace }}
+spec:
+  filepath: {{item.path | basename}}

@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine tag
+        run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
+
+      - name: Create release
+        uses: actions/github-script@v6
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          script: |
+            try {
+              const response = await github.rest.repos.createRelease({
+                draft: false,
+                generate_release_notes: true,
+                name: process.env.RELEASE_TAG,
+                owner: context.repo.owner,
+                prerelease: false,
+                repo: context.repo.repo,
+                tag_name: process.env.RELEASE_TAG,
+              });
+
+              core.exportVariable('RELEASE_ID', response.data.id);
+              core.exportVariable('RELEASE_UPLOAD_URL', response.data.upload_url);
+            } catch (error) {
+              core.setFailed(error.message);
+            }
+
+  publish:
+      name: Publish
+      needs: release
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Determine tag
+          run: "echo \"RELEASE_TAG=${GITHUB_REF#refs/tags/}\" >> $GITHUB_ENV"
+
+        - name: Check-out repository
+          uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
+            ref: ${{ env.RELEASE_TAG }}
+
+        - name: Install Ansible
+          run: pip install ansible==8.0.0
+
+        - name: Install Operator Collection SDK
+          run: ansible-galaxy collection install git+https://github.com/IBM/operator-collection-sdk.git#ibm/operator_collection_sdk,develop -f
+
+        - name: Build Collection
+          run: |
+            ansible-galaxy collection build ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection -f --output-path ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds
+            echo "COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
+            echo "COLLECTION_BUILD_LOCATION=${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
+
+        - name: Sign Collection
+          run: |
+            openssl genrsa -out privatekey.pem 2048
+            openssl rsa -in privatekey.pem -out racf-cert-manager.pub -outform PEM -pubout
+            openssl dgst -sha256 -sign privatekey.pem -out racf-cert-manager-${RELEASE}.sig ${COLLECTION_BUILD_LOCATION}
+            openssl dgst -sha256 -verify racf-cert-manager.pub -signature racf-cert-manager-${RELEASE}.sig ${COLLECTION_BUILD_LOCATION}
+            echo "PUBLIC_KEY=$(readlink -f racf-cert-manager.pub)" >> $GITHUB_ENV
+            echo "SIGNATURE=$(readlink -f racf-cert-manager-${RELEASE}.sig)" >> $GITHUB_ENV
+          env:
+            RELEASE:  ${{ env.RELEASE_TAG }}
+
+        - name: Upload Collection and Signature Files to GitHub
+          run: |
+            gh release upload ${RELEASE_TAG} ${COLLECTION_BUILD_LOCATION}
+            gh release upload ${RELEASE_TAG} ${PUBLIC_KEY}
+            gh release upload ${RELEASE_TAG} ${SIGNATURE}
+          env:
+            GITHUB_TOKEN: ${{ github.TOKEN }}
+
+        - name: Publish Collection to Ansible Galaxy
+          run: ansible-galaxy collection publish -vvvv --api-key ${GALAXY_API_KEY} ${COLLECTION_BUILD_LOCATION}
+          env:
+            GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
+
+        - name: Build Offline Collection
+          run: |
+            rm -rf ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/
+            cd ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection
+            ansible-playbook ibm.operator_collection_sdk.create_offline_requirements
+            ansible-galaxy collection build ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection -f --output-path ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds
+            COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)
+            mv ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/${COLLECTION_BUILD}  ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/freemanlatrell-file_manager_offline-${RELEASE}.tar.gz
+            echo "COLLECTION_BUILD_OFFLINE_LOCATION=${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
+          env:
+            RELEASE:  ${{ env.RELEASE_TAG }}
+
+        - name: Sign Offline Collection
+          run: |
+            openssl genrsa -out privatekey-offline.pem 2048
+            openssl rsa -in privatekey-offline.pem -out racf-cert-manager-offline.pub -outform PEM -pubout
+            openssl dgst -sha256 -sign privatekey-offline.pem -out racf-cert-manager-${RELEASE}-offline.sig ${COLLECTION_BUILD_OFFLINE_LOCATION}
+            openssl dgst -sha256 -verify racf-cert-manager-offline.pub -signature racf-cert-manager-${RELEASE}-offline.sig ${COLLECTION_BUILD_OFFLINE_LOCATION}
+            echo "PUBLIC_KEY_OFFLINE=$(readlink -f racf-cert-manager-offline.pub)" >> $GITHUB_ENV
+            echo "SIGNATURE_OFFLINE=$(readlink -f racf-cert-manager-${RELEASE}-offline.sig)" >> $GITHUB_ENV
+          env:
+            RELEASE:  ${{ env.RELEASE_TAG }}
+
+        - name: Upload Offline Collection and Signature Files to GitHub
+          run: |
+            gh release upload ${RELEASE_TAG} ${COLLECTION_BUILD_OFFLINE_LOCATION}
+            gh release upload ${RELEASE_TAG} ${PUBLIC_KEY_OFFLINE}
+            gh release upload ${RELEASE_TAG} ${SIGNATURE_OFFLINE}
+          env:
+            GITHUB_TOKEN: ${{ github.TOKEN }}
+            
+        
+
+

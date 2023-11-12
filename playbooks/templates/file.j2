@@ -1,0 +1,16 @@
+This file was created by the following Kubernetes {{k8s_cr_kind}} Resource:
+​
+name: {{ansible_operator_meta.name}}
+namespace: {{ansible_operator_meta.namespace}}
+kind: {{k8s_cr_kind}}
+apiVersion: {{k8s_cr_version}}
+​
+------------------------------
+Ansible hostvars
+------------------------------
+​
+{{hostvars}}
+​
+-------------------------------------------------------
+Day 2 actions log - populated when a Day2 action is run
+-------------------------------------------------------

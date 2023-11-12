@@ -1,0 +1,72 @@
+###############################################################################
+# © Copyright IBM Corporation 2023
+###############################################################################
+
+- name: Create RACF User Certificate
+  hosts: all
+  gather_facts: false
+  environment: '{{ system_environment }}'
+
+  tasks:
+    - name: Set Owner Id
+      set_fact: 
+          owner_id: "{{ ansible_user | upper }}"
+
+    - name: Get signing certificate
+      kubernetes.core.k8s_info:
+        api_version: "{{ k8s_cr_version }}"
+        kind: RacfCACert
+        name: "{{ signing_cert }}"
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: signing_cert_instance
+      when: k8s_managed and not signing_cert == ' '
+      delegate_to: localhost
+
+    - name: Set signing certificate Label
+      set_fact:
+        sign_label: "{{ signing_cert_instance.resources[0].spec.cert_label }}"
+      when: not signing_cert == ' ' and signing_cert_instance is defined and signing_cert_instance.resources|length > 0
+
+    - include_role:
+        name: issue_tso_cmd
+      vars:
+        task_description: 'Create new self-signed USER cert with expiration and connect to keyring'
+        command:
+            - RACDCERT GENCERT ID({{owner_id}}) SUBJECTSDN(CN('{{ common_name }}') OU('{{ organizational_unit }}') C('{{ country }}')) WITHLABEL('{{ cert_label }}') NOTAFTER(DATE({{ expiry_date }}))
+            - RACDCERT ID({{ owner_id }}) CONNECT(LABEL('{{ cert_label }}') RING({{ keyring }}) DEFAULT)
+            - RACDCERT LISTRING({{ keyring }}) ID({{ owner_id }})
+            - RACDCERT LISTCHAIN(LABEL('{{ cert_label }}')) ID({{ owner_id }})
+      when: sign_label is not defined and not expiry_date == ''
+
+    - include_role:
+        name: issue_tso_cmd
+      vars:
+        task_description: 'Create new local-CA-signed USER cert with expiration and connect to keyring'
+        command:
+            - RACDCERT GENCERT ID({{ owner_id }}) SUBJECTSDN(CN('{{ common_name }}') OU('{{ organizational_unit }}') C('{{ country }}')) WITHLABEL('{{ cert_label }}') SIGNWITH(CERTAUTH LABEL('{{ sign_label }}')) NOTAFTER(DATE({{ expiry_date }}))
+            - RACDCERT ID({{ owner_id }})  CONNECT(LABEL('{{ cert_label }}')  RING({{ keyring }}) DEFAULT)
+            - RACDCERT LISTRING({{ keyring }}) ID({{ owner_id }})
+            - RACDCERT LISTCHAIN(LABEL('{{ cert_label }}')) ID({{ owner_id }})
+      when: sign_label is defined and not expiry_date == ''
+
+    - include_role:
+        name: issue_tso_cmd
+      vars:
+        task_description: 'Create new self-signed USER cert and connect to keyring'
+        command:
+            - RACDCERT GENCERT ID({{ owner_id }})  SUBJECTSDN(CN('{{ common_name }}')  OU('{{ organizational_unit }}') C('{{ country }}'))  WITHLABEL('{{ cert_label }}')
+            - RACDCERT ID({{ owner_id }}) CONNECT(LABEL('{{ cert_label }}') RING({{ keyring }}) DEFAULT)
+            - RACDCERT LISTRING({{ keyring }}) ID({{ owner_id }})
+            - RACDCERT LISTCHAIN(LABEL('{{ cert_label }}')) ID({{ owner_id }})
+      when: sign_label is not defined and expiry_date == ''
+
+    - include_role:
+        name: issue_tso_cmd
+      vars:
+        task_description: 'Create new local-CA-signed USER cert and connect to keyring'
+        command:
+            - RACDCERT GENCERT ID({{ owner_id }}) SUBJECTSDN(CN('{{ common_name }}') OU('{{ organizational_unit }}') C('{{ country }}')) WITHLABEL('{{ cert_label }}') SIGNWITH(CERTAUTH LABEL('{{ sign_label }}'))
+            - RACDCERT ID({{ owner_id }}) CONNECT(LABEL('{{ cert_label }}') RING({{ keyring }}) DEFAULT)
+            - RACDCERT LISTRING({{ keyring }}) ID({{ owner_id }})
+            - RACDCERT LISTCHAIN (LABEL('{{ cert_label }}')) ID({{ owner_id }})
+      when: sign_label is defined and expiry_date == ''

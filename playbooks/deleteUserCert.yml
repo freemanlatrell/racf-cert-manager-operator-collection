@@ -1,0 +1,35 @@
+###############################################################################
+# © Copyright IBM Corporation 2023
+###############################################################################
+
+- name: Delete RACF User Certificate
+  hosts: all
+  gather_facts: false
+  environment: '{{ system_environment }}'
+
+  tasks:
+    - name: Set Owner Id
+      set_fact: 
+          owner_id: "{{ ansible_user | upper }}"
+
+    - name: Get certificate
+      kubernetes.core.k8s_info:
+        api_version: "{{ k8s_cr_version }}"
+        kind: RacfUserCert
+        name: "{{ ansible_operator_meta.name }}"
+        namespace: "{{ ansible_operator_meta.namespace }}"
+      register: user_cert_instance
+      when: k8s_managed
+      delegate_to: localhost
+
+    - name: Get certificate label
+      set_fact:
+        cert_label: user_cert_instance.resources[0].spec.cert_label
+      when: user_cert_instance is defined and user_cert_instance.resources|length > 0
+
+    - include_role:
+        name: issue_tso_cmd
+      vars:
+        task_description: 'Deleting cert {{ cert_label }}'
+        command:
+          - RACDCERT ID({{ owner_id }}) DELETE(LABEL('{{ cert_label }}'))
