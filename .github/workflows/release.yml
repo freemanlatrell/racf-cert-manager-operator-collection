@@ -62,9 +62,9 @@ jobs:
 
         - name: Build Collection
           run: |
-            ansible-galaxy collection build ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection -f --output-path ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds
-            echo "COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
-            echo "COLLECTION_BUILD_LOCATION=${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
+            ansible-galaxy collection build ${GITHUB_WORKSPACE} -f --output-path ${GITHUB_WORKSPACE}/local/builds
+            echo "COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/local/builds)" >> $GITHUB_ENV
+            echo "COLLECTION_BUILD_LOCATION=${GITHUB_WORKSPACE}/local/builds/$(ls ${GITHUB_WORKSPACE}/local/builds)" >> $GITHUB_ENV
 
         - name: Sign Collection
           run: |
@@ -92,13 +92,13 @@ jobs:
 
         - name: Build Offline Collection
           run: |
-            rm -rf ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/
-            cd ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection
+            rm -rf ${GITHUB_WORKSPACE}/local/
+            cd ${GITHUB_WORKSPACE}
             ansible-playbook ibm.operator_collection_sdk.create_offline_requirements
-            ansible-galaxy collection build ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection -f --output-path ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds
-            COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)
-            mv ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/${COLLECTION_BUILD}  ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/freemanlatrell-file_manager_offline-${RELEASE}.tar.gz
-            echo "COLLECTION_BUILD_OFFLINE_LOCATION=${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds/$(ls ${GITHUB_WORKSPACE}/racf-cert-manager-operator-collection/local/builds)" >> $GITHUB_ENV
+            ansible-galaxy collection build ${GITHUB_WORKSPACE} -f --output-path ${GITHUB_WORKSPACE}/local/builds
+            COLLECTION_BUILD=$(ls ${GITHUB_WORKSPACE}/local/builds)
+            mv ${GITHUB_WORKSPACE}/local/builds/${COLLECTION_BUILD}  ${GITHUB_WORKSPACE}/local/builds/freemanlatrell-file_manager_offline-${RELEASE}.tar.gz
+            echo "COLLECTION_BUILD_OFFLINE_LOCATION=${GITHUB_WORKSPACE}/local/builds/$(ls ${GITHUB_WORKSPACE}/local/builds)" >> $GITHUB_ENV
           env:
             RELEASE:  ${{ env.RELEASE_TAG }}
 
