@@ -1,7 +1,0 @@
-zosendpoint_type: remote
-zosendpoint_name: wazi-sandbox
-zosendpoint_host: api.z-stack-int.cp.fyre.ibm.com
-zosendpoint_port: '32503'
-username: ibmuser
-ssh_key: ~/.ssh/id_ed25519
-passphrase: ''
