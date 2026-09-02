@@ -1,1 +1,4 @@
 ocsdk-extra-vars.yml
+
+# Local Ansible cache created by ansible-lint / ansible-galaxy
+.ansible/

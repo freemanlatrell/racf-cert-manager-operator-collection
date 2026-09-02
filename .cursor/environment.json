@@ -1,0 +1,4 @@
+{
+  "name": "racf-cert-manager-operator-collection",
+  "install": "bash .cursor/install.sh"
+}

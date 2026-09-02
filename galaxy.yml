@@ -60,6 +60,8 @@ issues: https://github.com/freemanlatrell/racf-cert-manager-operator-collection/
 # and '.git' are always filtered. Mutually exclusive with 'manifest'
 build_ignore:
   - local
+  - .cursor
+  - .ansible
 
 # A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a
 # list of MANIFEST.in style
